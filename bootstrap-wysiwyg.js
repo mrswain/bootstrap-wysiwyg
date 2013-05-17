@@ -27,13 +27,19 @@
 				if (options.activeToolbarClass) {
 					$(options.toolbarSelector).find(toolbarBtnSelector).each(function () {
 						var command = $(this).data(options.commandRole);
-						if (document.queryCommandState(command)) {
+						if (queryCommand(command)) {
 							$(this).addClass(options.activeToolbarClass);
 						} else {
 							$(this).removeClass(options.activeToolbarClass);
 						}
 					});
 				}
+			},
+			queryCommand = function (commandWithArgs, valueArg) {
+				var commandArr = commandWithArgs.split(' '),
+					command = commandArr.shift(),
+					args = commandArr.join(' ') + (valueArg || '');
+				return document.queryCommandState(command, args);
 			},
 			execCommand = function (commandWithArgs, valueArg) {
 				var commandArr = commandWithArgs.split(' '),
@@ -44,13 +50,15 @@
 			},
 			bindHotkeys = function (hotKeys) {
 				$.each(hotKeys, function (hotkey, command) {
-					editor.keydown(hotkey, function (e) {
+					var keydown = 'keydown.' + hotkey.replace('+', '_').split(' ').join(' keydown.');
+					var keyup = 'keyup.' + hotkey.replace('+', '_').split(' ').join(' keyup.');
+					editor.on(keydown, function (e) {
 						if (editor.attr('contenteditable') && editor.is(':visible')) {
 							e.preventDefault();
 							e.stopPropagation();
 							execCommand(command);
 						}
-					}).keyup(hotkey, function (e) {
+					}).on(keyup, function (e) {
 						if (editor.attr('contenteditable') && editor.is(':visible')) {
 							e.preventDefault();
 							e.stopPropagation();
@@ -197,4 +205,4 @@
 		dragAndDropImages: true,
 		fileUploadError: function (reason, detail) { console.log("File upload error", reason, detail); }
 	};
-}(window.jQuery));
+} (window.jQuery));
