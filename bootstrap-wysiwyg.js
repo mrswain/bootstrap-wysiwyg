@@ -21,13 +21,29 @@
 	$.fn.wysiwyg = function (userOptions) {
 		var editor = this,
 			selectedRange,
+			plugins,
 			options,
 			toolbarBtnSelector,
+			pluginBtnSelector,
 			updateToolbar = function () {
 				if (options.activeToolbarClass) {
 					$(options.toolbarSelector).find(toolbarBtnSelector).each(function () {
 						var command = $(this).data(options.commandRole);
 						if (queryCommand(command)) {
+							$(this).addClass(options.activeToolbarClass);
+						} else {
+							$(this).removeClass(options.activeToolbarClass);
+						}
+					});
+					$(options.toolbarSelector).find(pluginBtnSelector).each(function () {
+						var command = $(this).data(options.pluginRole);
+						var plugin = plugins[command];
+						if (plugin && plugin.enabled && !plugin.enabled(this, selectedRange)) {
+						    $(this).addClass(options.disabledToolbarClass);
+						} else {
+						    $(this).removeClass(options.disabledToolbarClass);
+						}
+						if (plugin && plugin.active && plugin.active(this, selectedRange)) {
 							$(this).addClass(options.activeToolbarClass);
 						} else {
 							$(this).removeClass(options.activeToolbarClass);
@@ -110,11 +126,22 @@
 				saveSelection();
 				input.data(options.selectionMarker, color);
 			},
-			bindToolbar = function (toolbar, options) {
+			bindToolbar = function (toolbar, options, plugins) {
 				toolbar.find(toolbarBtnSelector).click(function () {
 					restoreSelection();
 					editor.focus();
 					execCommand($(this).data(options.commandRole));
+					saveSelection();
+				});
+				toolbar.find(pluginBtnSelector).click(function () {
+					restoreSelection();
+					editor.focus();
+					var plugin = plugins[$(this).data(options.pluginRole)];
+					if (typeof (plugin) === "function")
+						plugin.call(plugin, this);
+					else if (plugin && plugin.exec)
+						plugin.exec(this);
+					updateToolbar();
 					saveSelection();
 				});
 				toolbar.find('[data-toggle=dropdown]').click(restoreSelection);
@@ -162,11 +189,20 @@
 			};
 		options = $.extend({}, $.fn.wysiwyg.defaults, userOptions);
 		toolbarBtnSelector = 'a[data-' + options.commandRole + '],button[data-' + options.commandRole + '],input[type=button][data-' + options.commandRole + ']';
+		pluginBtnSelector = 'a[data-' + options.pluginRole + '],button[data-' + options.pluginRole + '],input[type=button][data-' + options.pluginRole + ']';
 		bindHotkeys(options.hotKeys);
 		if (options.dragAndDropImages) {
 			initFileDrops();
 		}
-		bindToolbar($(options.toolbarSelector), options);
+		plugins = {};
+		for (var i = 0, l = options.plugins.length; i < l; i++) {
+			var name = options.plugins[i];
+			var plugin = $.fn.wysiwyg.plugins[name];
+			if (typeof (plugin) === "function") {
+			    plugins[name] = plugin(editor, $(options.toolbarSelector), options);
+			}
+		}
+		bindToolbar($(options.toolbarSelector), options, plugins);
 		editor.attr('contenteditable', true)
 			.on('mouseup keyup mouseout', function () {
 				saveSelection();
@@ -200,9 +236,14 @@
 		toolbarSelector: '[data-role=editor-toolbar]',
 		commandRole: 'edit',
 		activeToolbarClass: 'btn-info',
+		disabledToolbarClass: 'disabled',
 		selectionMarker: 'edit-focus-marker',
 		selectionColor: 'darkgrey',
 		dragAndDropImages: true,
-		fileUploadError: function (reason, detail) { console.log("File upload error", reason, detail); }
+		fileUploadError: function (reason, detail) { console.log("File upload error", reason, detail); },
+		pluginRole: 'command',
+		plugins: []
+	};
+	$.fn.wysiwyg.plugins = {
 	};
 } (window.jQuery));
