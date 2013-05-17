@@ -50,6 +50,11 @@
                 setText(range, $(getHtml(range)).text());
             }
         }
+
+        return {
+            exec: deformat,
+            enabled: canDeFormat
+        };
     }
 
     $.fn.wysiwyg.plugins = $.extend($.fn.wysiwyg.plugins, {
